@@ -109,6 +109,9 @@ int reconhecer(const char *entrada, int *pos, char *lexema) {
                      * Virgula sem digito depois: retorna ao ultimo ponto
                      * aceito, mantendo apenas a parte inteira do token.
                      */
+
+                    /*estado_corrente = ESTADO_ERRO;*/
+
                     tamanho--;
                     lexema[tamanho] = '\0';
                     i--;
