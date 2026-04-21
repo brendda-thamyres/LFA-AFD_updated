@@ -1,20 +1,13 @@
 /*
- * AFD - Reconhecedor de Constantes Numéricas Reais
- * Solução TIPO 2: Tabela de Transições
- * Padrão aceito: inteiros e reais com vírgula decimal
- *   Exemplos válidos:  3,14   42   0,5   100,00
- *   Exemplos inválidos: 3.14 (aceita apenas '3'), .14, 3,
+ * AFD - Reconhecedor de Constantes Numericas Reais
+ * Solucao 2: estado corrente global e transicoes por switch
  *
- * Estados:
- *   0 - inicial
- *   1 - lendo dígitos inteiros (estado de aceitação parcial)
- *   2 - lendo dígitos após vírgula (estado de aceitação)
- *  -1 - estado de erro/rejeição
+ * Padrao aceito:
+ *   numero -> digitos
+ *           | digitos , digitos
  *
- * Categorias de caractere (colunas da tabela):
- *   0 - dígito (0-9)
- *   1 - vírgula (',')
- *   2 - outro (qualquer outro caractere)
+ * Exemplos validos:   3,14   42   0,5   100,00
+ * Exemplos parciais:  3.14 reconhece 3, 3, reconhece 3
  */
 
 #include <stdio.h>
@@ -22,65 +15,106 @@
 #include <ctype.h>
 
 #define MAX_LEXEMA 256
-#define ERRO       -1
-#define NUM_ESTADOS 3
-#define NUM_COLUNAS 3
 
-/* Tabela de transições: tabela[estado][categoria] = proximo_estado */
-int tabela[NUM_ESTADOS][NUM_COLUNAS] = {
-    /*         digito  virgula  outro */
-    /* q0 */  {  1,     ERRO,   ERRO  },
-    /* q1 */  {  1,     2,      ERRO  },
-    /* q2 */  {  2,     ERRO,   ERRO  }
-};
+#define ESTADO_ERRO        -1
+#define ESTADO_INICIAL      0
+#define ESTADO_INTEIRO      1
+#define ESTADO_VIRGULA      2
+#define ESTADO_FRACIONARIO  3
+#define ESTADO_FINAL        4
 
-/* Estados de aceitação */
-int aceita[NUM_ESTADOS] = {
-    0,  /* q0: NÃO aceita */
-    1,  /* q1: aceita (inteiro) */
-    1   /* q2: aceita (real com vírgula) */
-};
+/*
+ * Estado corrente do AFD explicitamente acessivel de forma global,
+ * conforme a descricao da solucao.
+ */
+int estado_corrente = ESTADO_INICIAL;
 
-/* Retorna a categoria do caractere para indexar a tabela */
-int categoria(char c) {
-    if (isdigit((unsigned char)c)) return 0;
-    if (c == ',')                   return 1;
-    return 2;
+int adicionar_caractere(char *lexema, int *tamanho, char c) {
+    if (*tamanho >= MAX_LEXEMA - 1) {
+        estado_corrente = ESTADO_ERRO;
+        return 0;
+    }
+
+    lexema[*tamanho] = c;
+    (*tamanho)++;
+    lexema[*tamanho] = '\0';
+    return 1;
 }
 
 /*
- * Tenta reconhecer um token a partir da posição *pos na cadeia entrada.
- * Avança *pos até onde o AFD conseguir avançar.
- * Retorna 1 se encontrou token, 0 caso contrário.
- * Preenche lexema com o token reconhecido.
+ * Tenta reconhecer um token a partir da posicao *pos na cadeia entrada.
+ * Toda a logica do AFD fica no laco abaixo; o switch controla as
+ * transicoes e cada estado trata suas situacoes de erro.
  */
 int reconhecer(const char *entrada, int *pos, char *lexema) {
-    int estado = 0;
-    int ultimo_aceito = -1;
-    int ultimo_aceito_pos = *pos;
     int i = *pos;
-    int len = (int)strlen(entrada);
+    int tamanho = 0;
 
-    while (i < len) {
-        int col = categoria(entrada[i]);
-        int prox = tabela[estado][col];
+    lexema[0] = '\0';
+    estado_corrente = ESTADO_INICIAL;
 
-        if (prox == ERRO) break;
+    while (estado_corrente != ESTADO_FINAL &&
+           estado_corrente != ESTADO_ERRO) {
+        char c = entrada[i];
 
-        estado = prox;
-        i++;
+        switch (estado_corrente) {
+            case ESTADO_INICIAL:
+                if (isdigit((unsigned char)c)) {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                    estado_corrente = ESTADO_INTEIRO;
+                } else {
+                    estado_corrente = ESTADO_ERRO;
+                }
+                break;
 
-        if (aceita[estado]) {
-            ultimo_aceito = estado;
-            ultimo_aceito_pos = i;
+            case ESTADO_INTEIRO:
+                if (isdigit((unsigned char)c)) {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                } else if (c == ',') {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                    estado_corrente = ESTADO_VIRGULA;
+                } else {
+                    estado_corrente = ESTADO_FINAL;
+                }
+                break;
+
+            case ESTADO_VIRGULA:
+                if (isdigit((unsigned char)c)) {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                    estado_corrente = ESTADO_FRACIONARIO;
+                } else {
+                    /*
+                     * Virgula sem digito depois: retorna ao ultimo ponto
+                     * aceito, mantendo apenas a parte inteira do token.
+                     */
+                    tamanho--;
+                    lexema[tamanho] = '\0';
+                    i--;
+                    estado_corrente = ESTADO_FINAL;
+                }
+                break;
+
+            case ESTADO_FRACIONARIO:
+                if (isdigit((unsigned char)c)) {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                } else {
+                    estado_corrente = ESTADO_FINAL;
+                }
+                break;
+
+            default:
+                estado_corrente = ESTADO_ERRO;
+                break;
         }
     }
 
-    if (ultimo_aceito != -1) {
-        int tamanho = ultimo_aceito_pos - *pos;
-        strncpy(lexema, entrada + *pos, tamanho);
-        lexema[tamanho] = '\0';
-        *pos = ultimo_aceito_pos;
+    if (estado_corrente == ESTADO_FINAL && tamanho > 0) {
+        *pos = i;
         return 1;
     }
 
@@ -92,7 +126,7 @@ int main(void) {
     char lexema[MAX_LEXEMA];
     int encontrou = 0;
 
-    printf("AFD - Reconhecedor de Constantes Numéricas Reais\n");
+    printf("AFD - Reconhecedor de Constantes Numericas Reais\n");
     printf("--------------------------------------------------\n");
     printf("Digite a entrada: ");
 
@@ -101,28 +135,35 @@ int main(void) {
         return 1;
     }
 
-    /* Remove newline final */
     int n = (int)strlen(entrada);
-    if (n > 0 && entrada[n - 1] == '\n') entrada[--n] = '\0';
+    if (n > 0 && entrada[n - 1] == '\n') {
+        entrada[--n] = '\0';
+    }
 
     printf("Entrada: \"%s\"\n\n", entrada);
 
     int pos = 0;
+    /*percorre toda a entrada*/
     while (pos < n) {
-        /* Pula caracteres não-numéricos procurando início de token */
+        /*se nao for digito, ignora e continua
+         * procurando no proximo caractere
+         */
         if (!isdigit((unsigned char)entrada[pos])) {
             pos++;
             continue;
         }
 
         int pos_antes = pos;
+        /* guarda a posição antes de tentar reconhecer o token;
+         * posicao pode ser alterada por reconhecer() mesmo que o token nao seja reconhecido
+         */
         if (reconhecer(entrada, &pos, lexema)) {
             printf("Token reconhecido: %s\n", lexema);
             encontrou = 1;
-            break; /* Aceita apenas o PRIMEIRO token encontrado */
-        } else {
-            pos = pos_antes + 1; /* Avança para não travar */
+            break;
         }
+
+        pos = pos_antes + 1;
     }
 
     if (!encontrou) {
