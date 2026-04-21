@@ -4,9 +4,11 @@
  *
  * Padrao aceito:
  *   numero -> digitos
+ *           | - digitos
  *           | digitos , digitos
+ *           | - digitos , digitos
  *
- * Exemplos validos:   3,14   42   0,5   100,00
+ * Exemplos validos:   3,14   -3,14   42   -42   0,5   100,00
  * Exemplos parciais:  3.14 reconhece 3, 3, reconhece 3
  */
 
@@ -18,10 +20,11 @@
 
 #define ESTADO_ERRO        -1
 #define ESTADO_INICIAL      0
-#define ESTADO_INTEIRO      1
-#define ESTADO_VIRGULA      2
-#define ESTADO_FRACIONARIO  3
-#define ESTADO_FINAL        4
+#define ESTADO_SINAL        1
+#define ESTADO_INTEIRO      2
+#define ESTADO_VIRGULA      3
+#define ESTADO_FRACIONARIO  4
+#define ESTADO_FINAL        5
 
 /*
  * Estado corrente do AFD explicitamente acessivel de forma global,
@@ -59,6 +62,20 @@ int reconhecer(const char *entrada, int *pos, char *lexema) {
 
         switch (estado_corrente) {
             case ESTADO_INICIAL:
+                if (c == '-') {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                    estado_corrente = ESTADO_SINAL;
+                } else if (isdigit((unsigned char)c)) {
+                    if (!adicionar_caractere(lexema, &tamanho, c)) break;
+                    i++;
+                    estado_corrente = ESTADO_INTEIRO;
+                } else {
+                    estado_corrente = ESTADO_ERRO;
+                }
+                break;
+
+            case ESTADO_SINAL:
                 if (isdigit((unsigned char)c)) {
                     if (!adicionar_caractere(lexema, &tamanho, c)) break;
                     i++;
@@ -145,10 +162,10 @@ int main(void) {
     int pos = 0;
     /*percorre toda a entrada*/
     while (pos < n) {
-        /*se nao for digito, ignora e continua
+        /*se nao for digito nem sinal de menos, ignora e continua
          * procurando no proximo caractere
          */
-        if (!isdigit((unsigned char)entrada[pos])) {
+        if (!isdigit((unsigned char)entrada[pos]) && entrada[pos] != '-') {
             pos++;
             continue;
         }
