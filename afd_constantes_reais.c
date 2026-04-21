@@ -110,12 +110,13 @@ int reconhecer(const char *entrada, int *pos, char *lexema) {
                      * aceito, mantendo apenas a parte inteira do token.
                      */
 
-                    /*estado_corrente = ESTADO_ERRO;*/
-
+                    estado_corrente = ESTADO_ERRO;
+                    /*
                     tamanho--;
                     lexema[tamanho] = '\0';
                     i--;
                     estado_corrente = ESTADO_FINAL;
+                    */
                 }
                 break;
 
