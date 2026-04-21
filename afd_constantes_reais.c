@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <windows.h>
 
 #define MAX_LEXEMA 256
 
@@ -187,5 +188,6 @@ int main(void) {
         printf("Nenhum token reconhecido.\n");
     }
 
+    Sleep(5000);
     return 0;
 }
