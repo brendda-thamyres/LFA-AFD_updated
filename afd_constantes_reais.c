@@ -17,8 +17,8 @@
 #include <ctype.h>
 #include <windows.h>
 
+// macros para indicar os estados do afd
 #define MAX_LEXEMA 256
-
 #define ESTADO_ERRO        -1
 #define ESTADO_INICIAL      0
 #define ESTADO_SINAL        1
@@ -31,6 +31,7 @@
  * Estado corrente do AFD explicitamente acessivel de forma global,
  * conforme a descricao da solucao.
  */
+
 int estado_corrente = ESTADO_INICIAL;
 
 int adicionar_caractere(char *lexema, int *tamanho, char c) {
@@ -57,8 +58,7 @@ int reconhecer(const char *entrada, int *pos, char *lexema) {
     lexema[0] = '\0';
     estado_corrente = ESTADO_INICIAL;
 
-    while (estado_corrente != ESTADO_FINAL &&
-           estado_corrente != ESTADO_ERRO) {
+    while (estado_corrente != ESTADO_FINAL && estado_corrente != ESTADO_ERRO) {
         char c = entrada[i];
 
         switch (estado_corrente) {
@@ -106,17 +106,17 @@ int reconhecer(const char *entrada, int *pos, char *lexema) {
                     estado_corrente = ESTADO_FRACIONARIO;
                 } else {
                     /*
-                     * Virgula sem digito depois: retorna ao ultimo ponto
-                     * aceito, mantendo apenas a parte inteira do token.
+                     * Virgula sem digito depois: nao aceita, pois o estado virgula nao é sinal,
+                     logo, ou ele recebe outro digito pra ir para o estado final ou dá erro
                      */
 
                     estado_corrente = ESTADO_ERRO;
-                    /*
-                    tamanho--;
-                    lexema[tamanho] = '\0';
-                    i--;
-                    estado_corrente = ESTADO_FINAL;
-                    */
+                    
+                    // tamanho--;
+                    // lexema[tamanho] = '\0';
+                    // i--;
+                    // estado_corrente = ESTADO_FINAL;
+                    
                 }
                 break;
 
@@ -135,63 +135,59 @@ int reconhecer(const char *entrada, int *pos, char *lexema) {
         }
     }
 
+    //depois que o lexema acaba, reconhece o token se tiver chegado no estado final, att a posição
     if (estado_corrente == ESTADO_FINAL && tamanho > 0) {
         *pos = i;
         return 1;
     }
 
+    //retorna estado de erro se nao é o estado final
     return 0;
 }
 
 int main(void) {
+
+    //variaveis de entrada
     char entrada[MAX_LEXEMA];
     char lexema[MAX_LEXEMA];
-    int encontrou = 0;
+    //int encontrou = 0;
+    int opcao;
 
     printf("AFD - Reconhecedor de Constantes Numericas Reais\n");
     printf("--------------------------------------------------\n");
-    printf("Digite a entrada: ");
-
-    if (!fgets(entrada, sizeof(entrada), stdin)) {
-        fprintf(stderr, "Erro ao ler entrada.\n");
-        return 1;
-    }
-
-    int n = (int)strlen(entrada);
-    if (n > 0 && entrada[n - 1] == '\n') {
-        entrada[--n] = '\0';
-    }
-
-    printf("Entrada: \"%s\"\n\n", entrada);
-
-    int pos = 0;
-    /*percorre toda a entrada*/
-    while (pos < n) {
-        /*se nao for digito nem sinal de menos, ignora e continua
-         * procurando no proximo caractere
-         */
-        if (!isdigit((unsigned char)entrada[pos]) && entrada[pos] != '-') {
-            pos++;
-            continue;
+    do {
+        printf("Digite a entrada: ");
+    
+        if (!fgets(entrada, sizeof(entrada), stdin)) {
+            fprintf(stderr, "Erro ao ler entrada.\n");
+            return 1;
         }
-
-        int pos_antes = pos;
-        /* guarda a posição antes de tentar reconhecer o token;
-         * posicao pode ser alterada por reconhecer() mesmo que o token nao seja reconhecido
-         */
+    
+        //limpando a string
+        int n = (int)strlen(entrada);
+        if (n > 0 && entrada[n - 1] == '\n') {
+            entrada[--n] = '\0';
+        }
+    
+        printf("Entrada: \"%s\"\n\n", entrada);
+    
+        int pos = 0;
+        /*percorre toda a entrada*/
         if (reconhecer(entrada, &pos, lexema)) {
             printf("Token reconhecido: %s\n", lexema);
-            encontrou = 1;
-            break;
+        } else {
+            printf("Nenhum token reconhecido.\n");
         }
 
-        pos = pos_antes + 1;
-    }
+        //adicionei uma opção de fazer outro teste so pra nao precisar executar toda vez
+        printf("\n=== Digite 1 para inserir outra entrada ou outro numero para sair do programa:  ");
+        scanf("%d", &opcao);
 
-    if (!encontrou) {
-        printf("Nenhum token reconhecido.\n");
-    }
+        int ch;
+        while ((ch = getchar()) != '\n' && ch != EOF);
+
+    } while (opcao == 1);
 
     Sleep(5000);
     return 0;
-}
+}       
