@@ -63,41 +63,6 @@ Exemplos validos:
 ```
 
 ---
-
-## Observacoes importantes
-
-O programa reconhece apenas o primeiro token valido encontrado.
-
-Por exemplo, na entrada:
-
-```text
-212131easd123,54
-```
-
-o primeiro token reconhecido e:
-
-```text
-212131
-```
-
-Isso acontece porque, depois dos digitos iniciais, o caractere `e` encerra aquele token. O programa imprime o primeiro token encontrado e para a busca.
-
-Se uma virgula aparecer sem digito depois, o AFD volta para o ultimo ponto aceito e reconhece apenas a parte inteira.
-
-Exemplo:
-
-```text
-3,
-```
-
-gera:
-
-```text
-Token reconhecido: 3
-```
-
----
-
 ## Estados do AFD
 
 | Estado no codigo | Significado |
